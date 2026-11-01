@@ -2,18 +2,18 @@
 
 ## 1. Introduction
 
-Cloud infrastructure providers must continuously monitor workload demand to make informed decisions about resource allocation, capacity planning, and scaling. Reliable workload forecasts can help infrastructure teams anticipate changes in demand, maintain sufficient computational resources, and reduce unnecessary infrastructure costs.
+Cloud infrastructure providers must continuously monitor workload demand to make informed decisions about resource allocation, capacity planning, and scaling. Reliable workload forecasts help infrastructure teams anticipate changes in demand, maintain sufficient computational resources, and reduce unnecessary infrastructure costs.
 
 The objective of this project is to analyze historical CPU utilization data from the Microsoft Azure Public Dataset V2 and develop an end-to-end pipeline for short-term cloud workload forecasting.
 
 The analysis focuses on two workload metrics:
 
 - **Active VM Count:** The number of unique virtual machines with valid CPU observations at each timestamp.
-- **Aggregate CPU Utilization:** The arithmetic mean of CPU utilization across the observed virtual machines at each timestamp.
+- **Aggregate CPU Utilization:** The arithmetic mean of CPU utilization across all observed virtual machines at each timestamp.
 
 The project follows a complete forecasting workflow, including data preparation, exploratory analysis, feature engineering, baseline development, model training, time-aware validation, final holdout evaluation, and operational recommendations.
 
-The main forecasting model is based on `SGDRegressor` from scikit-learn. Its performance is compared with a simple persistence baseline to determine whether the more complex model provides a meaningful improvement over a straightforward forecasting approach.
+The main forecasting model is based on `SGDRegressor` from scikit-learn. Its performance is compared against a simple persistence baseline to determine whether the more complex model provides a meaningful improvement over a straightforward forecasting approach.
 
 ## 2. Dataset and Preprocessing
 
@@ -50,7 +50,7 @@ active\_vm\_count_t =
 
 **Aggregate CPU Utilization**
 
-Aggregate CPU utilization is calculated as the arithmetic mean of the valid VM-level `avg_cpu` measurements at each timestamp:
+Aggregate CPU utilization is calculated as the arithmetic mean of valid VM-level `avg_cpu` measurements at each timestamp:
 
 \[
 aggregate\_cpu\_utilization_t =
@@ -101,18 +101,18 @@ The main CPU forecasting model uses `SGDRegressor`, a linear regression estimato
 
 Two input features are used:
 
-- `timestamp`: The timestamp associated with the observation.
+- `timestamp`: The timestamp associated with each observation.
 - `median_4`: A rolling median feature based on recent CPU utilization observations.
 
 The `median_4` feature is designed to represent recent workload behavior while reducing sensitivity to individual extreme observations.
 
-**Initialization and calculation of `median_4`**
+**Initialization and Calculation of `median_4`**
 
 For the first training observation, no preceding CPU utilization observations are available. Therefore, the initial value of `median_4` is assigned a fixed value of **9.256428**.
 
-For subsequent observations, the feature is calculated using the median of the available preceding CPU utilization values, up to a maximum of four observations. Consequently, during the initial rows, fewer than four preceding observations may be available. Once four preceding observations are available, the median is calculated from those four values.
+For subsequent observations, this feature is calculated using the median of the available preceding CPU utilization values, up to a maximum of four observations. Consequently, fewer than four preceding observations may be available during the initial rows. Once four preceding observations are available, the median is calculated using those four values.
 
-This initialization strategy allows the feature to be constructed for the first training row without using future observations. The fixed initial value is used only for the first row; subsequent values are calculated from the preceding historical data.
+This initialization strategy allows the feature to be constructed for the first training observation without using future information. The fixed initial value is used only for the first row, while subsequent values are calculated from preceding historical data.
 
 Before model training, the input features are standardized using `StandardScaler`. The scaler is fitted on the training data and then used to transform the corresponding input features.
 
@@ -206,17 +206,6 @@ A small numerical constant is used in the implementation to avoid division by ze
 
 For all three metrics, lower values indicate better forecasting performance.
 
-**Normalized MAE**
-
-Normalized MAE is also used to compare the main model with the persistence baseline:
-
-\[
-Normalized\ MAE =
-\frac{MAE_{\text{model}}}{MAE_{\text{baseline}}}
-\]
-
-A value below 1 indicates that the main model performs better than the baseline, while a value above 1 indicates that the baseline performs better.
-
 ## 5. Results and Discussion
 
 ### 5.1. Cross-validation Results
@@ -269,12 +258,12 @@ Workload forecasting can support infrastructure teams in making decisions about 
 
 Based on the forecasting approach and evaluation results, the following operational considerations are recommended:
 
-- **Continuous monitoring:** Monitor aggregate CPU utilization and active VM count to identify workload changes.
-- **Scale-up decisions:** Consider scaling up when CPU utilization remains elevated over a sustained period rather than reacting to isolated spikes.
-- **Capacity headroom:** Maintain sufficient spare capacity to accommodate unexpected workload increases and reduce the risk of under-provisioning.
-- **Gradual scale-down:** Reduce allocated resources gradually when demand remains low to avoid unnecessary infrastructure costs.
-- **Peak-period evaluation:** Pay particular attention to forecasting errors during periods of high CPU utilization, since underestimating demand can create operational risks.
-- **Baseline comparison:** Continue comparing forecasting models against simple baselines to ensure that additional model complexity provides measurable benefits.
+- **Continuous Monitoring:** Monitor aggregate CPU utilization and active VM count to identify workload changes.
+- **Scale-up Decisions:** Consider scaling up when CPU utilization remains elevated over a sustained period rather than reacting to isolated spikes.
+- **Capacity Headroom:** Maintain sufficient spare capacity to accommodate unexpected workload increases and reduce the risk of under-provisioning.
+- **Gradual Scale-down:** Reduce allocated resources gradually when demand remains low to avoid unnecessary infrastructure costs.
+- **Peak-period Evaluation:** Pay particular attention to forecasting errors during periods of high CPU utilization, since underestimating demand can create operational risks.
+- **Baseline Comparison:** Continue comparing forecasting models against simple baselines to ensure that additional model complexity provides measurable benefits.
 
 The final holdout results indicate that the persistence baseline is currently more reliable than SGDRegressor for the evaluated CPU utilization series.
 
@@ -284,19 +273,19 @@ Consequently, the persistence approach is the more suitable of the two evaluated
 
 Several limitations should be considered when interpreting the results.
 
-**Limited observation period**
+**Limited Observation Period**
 
 The supplied dataset contains approximately 11.1 hours of observations per VM. This relatively short history limits the ability to identify longer-term workload patterns, daily cycles, and recurring seasonal behavior.
 
-**Linear model assumptions**
+**Linear Model Assumptions**
 
 SGDRegressor uses a linear relationship between the input features and the target. More complex workload behavior may not be adequately represented by this approach.
 
-**Recursive forecasting errors**
+**Recursive Forecasting Errors**
 
 In recursive forecasting, each prediction becomes part of the input history for subsequent predictions. Consequently, an early prediction error can influence later forecasting steps.
 
-**Active VM count forecasting**
+**Active VM Count Forecasting**
 
 The active VM count approach relies on a constant-value or persistence assumption. Although this is appropriate for the supplied dataset, it may be insufficient when the number of active virtual machines changes substantially over time.
 
